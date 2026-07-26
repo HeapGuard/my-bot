@@ -208,6 +208,11 @@ async def _handle_story_generation(message: types.Message, user_prompt: str):
                     await message.answer(plain)
                 except Exception:
                     await message.answer(channel_post)
+        
+        # Send warning if present
+        warning = story_data.get("warning")
+        if warning:
+            await message.answer(warning, parse_mode="Markdown")
 
         # Send Action Keyboard
         kb = InlineKeyboardMarkup(inline_keyboard=[

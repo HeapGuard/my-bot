@@ -135,6 +135,8 @@ class StoryEngine:
                         return result
                     else:
                         print(f"[LLM] Notice: {model_name} status ({response.status_code}): {response.text}")
+                        if response.status_code == 429:
+                            print("[LLM] Rate limit reached.")
                 except Exception as e:
                     print(f"[LLM] Network exception calling {model_name}: {e}")
 
@@ -220,32 +222,33 @@ class StoryEngine:
         if not topic_title or len(topic_title) < 5:
             topic_title = "НЕВЕРОЯТНАЯ ИСТОРИЯ"
 
-        # Target 4-5 story slides (total 6-8 with cover/ending/outro)
-        total_sentences = len(sentences)
-        target_slides = min(max(total_sentences // 2, 3), 5)  # 3-5 story slides
-        
-        # Distribute sentences evenly across slides
+        # Group text into slides up to 250 chars without dropping any text
         slide_texts = []
-        chunk_size = max(1, total_sentences // target_slides)
+        current_chunk = ""
         
-        for i in range(0, total_sentences, chunk_size):
-            chunk = sentences[i:i + chunk_size]
-            combined = " ".join(chunk)
-            # STRICT limit: 280 chars per slide (≈40 words)
-            if len(combined) > 280:
-                # Cut at last sentence/word boundary
-                cut = combined[:277].rsplit('. ', 1)[0]
-                if len(cut) < 100:  # If cut too short, cut at word
-                    cut = combined[:277].rsplit(' ', 1)[0]
-                combined = cut + "..."
-            slide_texts.append(combined)
+        for text in sentences:
+            if len(current_chunk) + len(text) < 250:
+                current_chunk += (" " if current_chunk else "") + text
+            else:
+                if current_chunk:
+                    slide_texts.append(current_chunk.strip())
+                
+                # If a single sentence is huge, split it by words
+                if len(text) >= 250:
+                    words = text.split()
+                    temp_chunk = ""
+                    for word in words:
+                        if len(temp_chunk) + len(word) < 250:
+                            temp_chunk += (" " if temp_chunk else "") + word
+                        else:
+                            slide_texts.append(temp_chunk.strip())
+                            temp_chunk = word
+                    current_chunk = temp_chunk
+                else:
+                    current_chunk = text
         
-        # Ensure max 5 story slides (total 8 with cover + ending + outro)
-        if len(slide_texts) > 5:
-            merged = " ".join(slide_texts[4:])
-            if len(merged) > 280:
-                merged = merged[:277].rsplit(' ', 1)[0] + "..."
-            slide_texts = slide_texts[:4] + [merged]
+        if current_chunk:
+            slide_texts.append(current_chunk.strip())
 
         # Build slides
         slides = []
@@ -307,7 +310,8 @@ class StoryEngine:
         return {
             "title": topic_title,
             "channel_text": "\n\n".join(channel_text_parts),
-            "slides": slides
+            "slides": slides,
+            "warning": "⚠️ **Внимание:** Превышен лимит запросов к нейросети (Gemini API). Текст был разбит на слайды базовым алгоритмом без переписывания."
         }
 
     @staticmethod
