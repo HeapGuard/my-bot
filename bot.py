@@ -65,70 +65,13 @@ renderer = SlideRenderer()
 # Message buffer for combining multi-part messages from Telegram's 4096 char limit
 pending_messages: dict[int, dict] = {}  # user_id -> {"texts": [...], "task": asyncio.Task, "message": Message}
 
-def escape_md_v2(text: str) -> str:
-    """Escape special characters for Telegram MarkdownV2 parse mode."""
-    # Characters that need escaping in MarkdownV2
-    special_chars = r'_[]()~`>#+-=|{}.!'
-    result = ""
-    i = 0
-    while i < len(text):
-        # Preserve **bold** markers — convert to MarkdownV2 bold
-        if text[i:i+2] == '**':
-            result += '*'
-            i += 2
-            continue
-        # Preserve _italic_ markers
-        if text[i] == '_' and i > 0 and text[i-1] != '\\':
-            # Check if this is part of _italic_ pair — let it through
-            result += '_'
-            i += 1
-            continue
-        if text[i] in special_chars:
-            result += '\\' + text[i]
-        else:
-            result += text[i]
-        i += 1
-    return result
-
 
 def format_channel_post(story_data: dict) -> str:
     """
-    Formats a beautiful Markdown post from story data, ready for Telegram/Threads channel.
-    Uses MarkdownV2 compatible formatting.
+    Returns the channel_text from story data.
+    The LLM or fallback in llm.py already builds proper Markdown with CTA.
     """
-    channel_text = story_data.get("channel_text", "")
-    
-    if channel_text:
-        return channel_text
-    
-    # Fallback: build from slides
-    title = story_data.get("title", "История")
-    slides = story_data.get("slides", [])
-    
-    parts = [f"📖 **{title}**\n"]
-    
-    for slide in slides:
-        stype = slide.get("type", "")
-        text = slide.get("text", "").strip()
-        
-        if stype == "story" and text:
-            clean = re.sub(r"<b>(.*?)</b>", r"**\1**", text)
-            clean = clean.replace("\\n\\n", "\n\n").replace("\\n", "\n")
-            parts.append(clean)
-        elif stype == "accent" and text:
-            clean = re.sub(r"<b>(.*?)</b>", r"**\1**", text)
-            parts.append(clean)
-        elif stype == "ending":
-            if text:
-                clean = re.sub(r"<b>(.*?)</b>", r"**\1**", text)
-                parts.append(f"✦ {clean}")
-            question = slide.get("question", "")
-            if question:
-                parts.append(f"\n💬 _{question}_")
-    
-    parts.append("\n📌 **Подписывайся, чтобы не пропустить новые истории!**")
-    
-    return "\n\n".join(parts)
+    return story_data.get("channel_text", "")
 
 
 @dp.message(CommandStart())
@@ -253,15 +196,18 @@ async def _handle_story_generation(message: types.Message, user_prompt: str):
         if channel_post:
             try:
                 await message.answer(
-                    f"📋 **Готовый текст для канала:**\n\n{channel_post}",
-                    parse_mode="Markdown"
+                    channel_post,
+                    parse_mode="Markdown",
+                    disable_web_page_preview=True
                 )
             except Exception as fmt_err:
-                # If Markdown fails, send as plain text
-                logging.warning(f"Markdown formatting failed, sending plain: {fmt_err}")
-                await message.answer(
-                    f"📋 Готовый текст для канала:\n\n{channel_post}"
-                )
+                logging.warning(f"Markdown formatting failed, trying plain: {fmt_err}")
+                try:
+                    # Strip markdown and send plain
+                    plain = re.sub(r'[\*_`\[\]\(\)#>]', '', channel_post)
+                    await message.answer(plain)
+                except Exception:
+                    await message.answer(channel_post)
 
         # Send Action Keyboard
         kb = InlineKeyboardMarkup(inline_keyboard=[
