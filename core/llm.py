@@ -93,38 +93,48 @@ STORY_PROMPT_TEMPLATE = """
 
 class StoryEngine:
     def __init__(self):
-        self.api_key = config.GEMINI_API_KEY
+        self.api_key = config.OPENROUTER_API_KEY
 
     async def generate_carousel_story(self, user_input: str) -> dict:
         """
-        Sends user input to Gemini API and returns structured carousel slides dictionary.
+        Sends user input to OpenRouter API and returns structured carousel slides dictionary.
         Safe against format key errors and network connection timeouts.
         """
-        if not self.api_key or self.api_key == "YOUR_GEMINI_API_KEY":
+        if not self.api_key or self.api_key == "YOUR_OPENROUTER_API_KEY":
             return self._get_demo_story(user_input)
 
         prompt = STORY_PROMPT_TEMPLATE.replace("{user_input}", user_input)
-        models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash-latest", "gemini-2.0-flash-exp", "gemini-1.5-pro"]
+        
+        # Best free tier models on OpenRouter
+        models_to_try = [
+            "openrouter/free",
+            "google/gemma-4-31b-it:free",
+            "openai/gpt-oss-20b:free",
+            "nvidia/nemotron-3-super-120b-a12b:free"
+        ]
         
         timeout = httpx.Timeout(30.0, connect=10.0)
         proxy = config.HTTP_PROXY if config.HTTP_PROXY else None
         async with httpx.AsyncClient(timeout=timeout, proxy=proxy) as client:
             for model_name in models_to_try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
-                headers = {"Content-Type": "application/json"}
+                url = "https://openrouter.ai/api/v1/chat/completions"
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://github.com/HeapGuard/my-bot", # Optional but recommended by OpenRouter
+                    "X-Title": "StoriesHub" # Optional but recommended by OpenRouter
+                }
                 payload = {
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {
-                        "temperature": 0.7,
-                        "responseMimeType": "application/json"
-                    }
+                    "model": model_name,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.7
                 }
 
                 try:
                     response = await client.post(url, json=payload, headers=headers)
                     if response.status_code == 200:
                         data = response.json()
-                        raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
+                        raw_text = data["choices"][0]["message"]["content"]
                         result = self._clean_and_parse_json(raw_text)
                         # Ensure channel_text exists and has correct CTA
                         if "channel_text" not in result:
@@ -136,7 +146,7 @@ class StoryEngine:
                     else:
                         print(f"[LLM] Notice: {model_name} status ({response.status_code}): {response.text}")
                         if response.status_code == 429:
-                            print("[LLM] Rate limit reached.")
+                            print(f"[LLM] Rate limit reached for {model_name}.")
                 except Exception as e:
                     print(f"[LLM] Network exception calling {model_name}: {e}")
 

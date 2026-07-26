@@ -6,9 +6,9 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-BRAND_HANDLE = os.getenv("BRAND_HANDLE", "@intstg_stories")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "YOUR_OPENROUTER_API_KEY")
+BRAND_HANDLE = os.getenv("BRAND_HANDLE", "@your_brand_handle")
 BRAND_NAME = os.getenv("BRAND_NAME", "StoriesHub")
 
 OUTPUT_DIR = BASE_DIR / os.getenv("OUTPUT_DIR", "output")
