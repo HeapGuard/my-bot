@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Slide Card</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    {{ css_content | safe }}
+  </style>
+</head>
+<body>
+
+  <div class="card-container">
+
+    {% if slide.type == 'outro' %}
+      {% if slide.image_url %}
+      <img class="outro-bg-img" src="{{ slide.image_url }}" alt="Background">
+      {% else %}
+      <div class="outro-bg-img" style="background: radial-gradient(circle at 50% 50%, #1a1b24 0%, #050507 100%);"></div>
+      {% endif %}
+      <div class="outro-overlay"></div>
+    {% endif %}
+
+    <!-- Card Header -->
+    <div class="card-header">
+      <span class="brand-handle">{{ brand_handle }}</span>
+      {% if threads_logo_url %}
+      <img class="brand-logo" src="{{ threads_logo_url }}" alt="Threads">
+      {% else %}
+      <svg class="brand-logo" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 14.5a4.5 4.5 0 0 1-4.5-4.5 4.5 4.5 0 0 1 4.5-4.5c2.5 0 4 1.5 4 4.5v1a1.5 1.5 0 0 1-3 0v-1a1 1 0 0 0-2 0 1 1 0 0 0 1 1c1.5 0 2.5-1 2.5-2.5"/>
+      </svg>
+      {% endif %}
+    </div>
+
+    <!-- Main Content Body -->
+    <div class="card-content">
+
+      {% if slide.type == 'cover' %}
+        <div class="slide-cover">
+          {% if slide.image_url %}
+          <div class="cover-image-box">
+            <img src="{{ slide.image_url }}" alt="Cover visual">
+          </div>
+          {% endif %}
+          <h1 class="cover-title">{{ slide.title }}</h1>
+        </div>
+
+      {% elif slide.type == 'story' %}
+        <div class="slide-story">
+          <p class="story-text">{{ slide.text | safe }}</p>
+        </div>
+
+      {% elif slide.type == 'quote' %}
+        <div class="slide-quote">
+          <h2 class="quote-text">{{ slide.text | safe }}</h2>
+        </div>
+
+      {% elif slide.type == 'accent' %}
+        <div class="slide-accent">
+          {% if slide.image_url %}
+          <div class="accent-image-box">
+            <img src="{{ slide.image_url }}" alt="Accent visual">
+          </div>
+          {% endif %}
+          <p class="accent-text">{{ slide.text | safe }}</p>
+        </div>
+
+      {% elif slide.type == 'ending' %}
+        <div class="slide-ending">
+          {% if slide.text %}
+          <p class="ending-text">{{ slide.text | safe }}</p>
+          {% endif %}
+
+          <div class="ending-divider">
+            <div class="ending-divider-line"></div>
+            <span class="ending-sparkle">✦</span>
+            <div class="ending-divider-line"></div>
+          </div>
+
+          {% if slide.question %}
+          <h3 class="ending-question">{{ slide.question }}</h3>
+          {% endif %}
+        </div>
+
+      {% elif slide.type == 'outro' %}
+        <div class="outro-content">
+          <div class="outro-text">{{ slide.text | safe }}</div>
+          <div class="outro-heart">♥</div>
+        </div>
+
+      {% endif %}
+
+    </div>
+
+    <!-- Card Footer -->
+    <div class="card-footer">
+      <div class="footer-line"></div>
+      <div class="page-indicator">{{ current_page }} / {{ total_pages }}</div>
+      <div class="footer-line"></div>
+    </div>
+
+  </div>
+
+</body>
+</html>
